@@ -8,23 +8,16 @@ This is a temporary script file.
 #https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/docApi
 
 import requests
-import json
 import pandas as pd
+import us
+import us_crime_functions as usc
 
 
-response = requests.get(
-    "https://api.usa.gov/crime/fbi/cde/agency/byStateAbbr/NY",
-    params={"api_key": "iiHnOKfno2Mgkt5AynpvPpUQTEyxE77jo1RU8PIv"}
-    )
+raw_data = usc.get_agency_data()
 
-#print(response.text)
 
-data = response.json()
+#Testing & error checks
 
-rows = []
-for county, agencies in data.items():
-    for agency in agencies:
-        agency["County"] = county
-        rows.append(agency)
-        
-df = pd.DataFrame(rows)
+
+
+
