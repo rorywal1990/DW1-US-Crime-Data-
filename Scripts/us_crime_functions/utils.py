@@ -8,7 +8,7 @@ Created on Tue May  5 18:53:17 2026
 import requests
 import pandas as pd
 import us
-
+import time
 
 
 def get_states():
@@ -65,27 +65,43 @@ def get_agency_ext():
 
 
 
-def api_call(url, ext):
+def api_call(url, ext, ext_ok):
     
     """
     Make the call to the API & return the results as a dataframe
     
     :param url: the url for the US Crime database
     :param ext: the extension for the URL, defining which data we want to pull 
-    :returns: the relevant data as a dataframe
+    :param ext_ok: returns 1 if the extraction has been successful and 0 if not
+    :returns: the relevant data as a dataframe. If extraction fails then an error variable is returned
     
     >>> df = api_call(url = "https://api.usa.gov/crime/fbi/cde/", ext = "agency/byStateAbbr/")
     
     """
     
-    response = requests.get(
-        url + ext,
-        params = {"api_key": "iiHnOKfno2Mgkt5AynpvPpUQTEyxE77jo1RU8PIv"}
-        )
+    ext_ok = 0
+    retries = 0
+    df = pd.DataFrame(None)
     
-    df = api_to_df (response.json())
+    while retries < 5:
     
-    return df
+        response = requests.get(
+            url + ext,
+            params = {"api_key": "iiHnOKfno2Mgkt5AynpvPpUQTEyxE77jo1RU8PIv"}
+            )
+        
+        if response.status_code != 200:
+            retries += 1
+            print("Extraction error. Attempting retry: ", retries)
+            time.sleep(5)
+            
+        else:
+            print("Successful extraction")
+            ext_ok = 1
+            retries = 5
+            df = api_to_df(response.json())
+    
+    return df, ext_ok
 
 
  
@@ -132,9 +148,23 @@ def get_agency_data():
     full_data = pd.DataFrame(None)
     states = get_states()
     states.remove("VA") # Virginia missing from dataset
-    for state in states:
-        state_data = api_call(url = get_url(), ext = get_agency_ext() + state)
-        full_data = pd.concat([full_data, state_data], axis = 0)
+    
+    
+    #Kill the loop either if we have an error with one of the states or if all states are pulled
+    extraction_ok = 1
+    all_states = 0
+    
+    while extraction_ok == 1 or all_states == 0:
+        for state in states:
+            print("Attempting extraction for ", state)
+            state_data, extraction_ok = api_call(url = get_url(), ext = get_agency_ext() + state, ext_ok = extraction_ok)
+        
+            if extraction_ok == 1:
+                full_data = pd.concat([full_data, state_data], axis = 0)
+                
+            if state == states[len(states)-1]:
+                all_states = 1
+                
 
-    return full_data
+    return full_data, extraction_ok
 

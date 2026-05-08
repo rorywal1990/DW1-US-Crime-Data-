@@ -7,13 +7,21 @@ This is a temporary script file.
 
 #https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/docApi
 
-import requests
-import pandas as pd
-import us
 import us_crime_functions as usc
 
 
-raw_data = usc.get_agency_data()
+try:
+
+    raw_data, extraction_ok = usc.get_agency_data()
+    
+    if extraction_ok == 1:
+        print("Success")
+    else:
+        print("Fail")
+    
+    
+except:
+    print("There has been an error")
 
 
 #Testing & error checks
