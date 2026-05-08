@@ -136,35 +136,53 @@ def api_to_df(api_call):
 def get_agency_data():
     
     """
-    Get the agency data as a dataframe by making an API call & converting it.
+    Get the agency data as a dataframe by making an API call & converting it. The model will attempt to
+    pull data for each state. If it fails, it will wait 5s and retry, up to a maximum of 5 times. If 
+    extraction for that state is successful then the state is removed from the list. Once the full list
+    has been cycled through then any remaining states will be retried as before, with the overall process
+    repeating either until all states have been pulled or 5 full retries have been attempted.
     
-    :returns: Agency data as a dataframe
+    :returns: Agency data as a dataframe & the list of any states that did not get data pulled for them
     
     >>>agency_data = get_agency_data
 
     """    
     
-    
     full_data = pd.DataFrame(None)
     states = get_states()
-    states.remove("VA") # Virginia missing from dataset
-    
+    states.remove("VA") # Virginia missing from dataset    
     
     #Kill the loop either if we have an error with one of the states or if all states are pulled
     extraction_ok = 1
     all_states = 0
+    retries = 0
     
-    while extraction_ok == 1 or all_states == 0:
+    while all_states == 0 and retries < 5:
+        
+        #Get the last state in the list. Each time we will use this to see if we have reached the end
+        #of the list yet, which is a trigger for retrying or ending the loop
+        last_state = states[len(states)-1]
+        
         for state in states:
             print("Attempting extraction for ", state)
             state_data, extraction_ok = api_call(url = get_url(), ext = get_agency_ext() + state, ext_ok = extraction_ok)
         
+            #If extraction is successful then store the data and remove the state from the list so
+            #we don't try to pull it again.
             if extraction_ok == 1:
                 full_data = pd.concat([full_data, state_data], axis = 0)
+                states.remove(state)
+                print(str(len(states)) + " States Remaining")
                 
-            if state == states[len(states)-1]:
+            #Check if we have ran out of states (because they are all in) or if we need to have another pass
+            #because some were missed
+            if len(states) == 0:
                 all_states = 1
+                extraction_ok = 1
+            
+            elif state == last_state:
+                retries += 1
                 
 
-    return full_data, extraction_ok
+    return full_data, states
 
